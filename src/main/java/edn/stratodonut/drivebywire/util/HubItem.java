@@ -1,22 +1,29 @@
 package edn.stratodonut.drivebywire.util;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 
 import java.util.function.Consumer;
 
 public class HubItem {
     public static void putHub(ItemStack itemStack, BlockPos pos) {
-        CompoundTag nbt = itemStack.getOrCreateTag();
+        CustomData customData = itemStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
+        CompoundTag nbt = customData.copyTag();
         nbt.putLong("Hub", pos.asLong());
-        itemStack.setTag(nbt);
+        itemStack.set(DataComponents.CUSTOM_DATA, CustomData.of(nbt));
     }
     
     public static void ifHubPresent(ItemStack itemStack, Consumer<BlockPos> runnable) {
-        if (itemStack.hasTag() && itemStack.getTag().contains("Hub", Tag.TAG_LONG)) {
-            runnable.accept(BlockPos.of(itemStack.getTag().getLong("Hub")));
+        CustomData customData = itemStack.get(DataComponents.CUSTOM_DATA);
+        if (customData != null) {
+            CompoundTag tag = customData.copyTag();
+            if (tag.contains("Hub", Tag.TAG_LONG)) {
+                runnable.accept(BlockPos.of(tag.getLong("Hub")));
+            }
         }
     }
 }

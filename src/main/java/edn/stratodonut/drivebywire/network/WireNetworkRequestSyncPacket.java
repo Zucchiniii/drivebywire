@@ -1,46 +1,51 @@
 package edn.stratodonut.drivebywire.network;
 
-import com.simibubi.create.foundation.networking.SimplePacketBase;
-import edn.stratodonut.drivebywire.WirePackets;
+import edn.stratodonut.drivebywire.DriveByWireMod;
 import edn.stratodonut.drivebywire.wire.ShipWireNetworkManager;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.valkyrienskies.core.api.ships.LoadedServerShip;
-import org.valkyrienskies.core.api.ships.ServerShip;
 import org.valkyrienskies.core.api.ships.Ship;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
 
-public class WireNetworkRequestSyncPacket extends SimplePacketBase {
+public class WireNetworkRequestSyncPacket implements CustomPacketPayload {
+    public static final Type<WireNetworkRequestSyncPacket> TYPE = new Type<>(DriveByWireMod.getResource("wire_request_sync"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, WireNetworkRequestSyncPacket> STREAM_CODEC =
+            StreamCodec.ofMember(WireNetworkRequestSyncPacket::write, WireNetworkRequestSyncPacket::new);
+
     long shipId;
 
-    public WireNetworkRequestSyncPacket() {}
     public WireNetworkRequestSyncPacket(long id) {
         shipId = id;
     }
-    public WireNetworkRequestSyncPacket(FriendlyByteBuf buf) {
+
+    public WireNetworkRequestSyncPacket(RegistryFriendlyByteBuf buf) {
         shipId = buf.readLong();
     }
 
-    @Override
-    public void write(FriendlyByteBuf buffer) {
+    public void write(RegistryFriendlyByteBuf buffer) {
         buffer.writeLong(shipId);
     }
 
-    @Override
-    public boolean handle(NetworkEvent.Context context) {
+    public static void handle(WireNetworkRequestSyncPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
-            Ship s = VSGameUtilsKt.getShipObjectWorld(sender.level()).getLoadedShips().getById(shipId);
+            if (!(context.player() instanceof ServerPlayer sender)) return;
+            Ship s = VSGameUtilsKt.getShipObjectWorld(sender.level()).getLoadedShips().getById(packet.shipId);
             if (s instanceof LoadedServerShip ss) {
-                ShipWireNetworkManager.get(ss).ifPresent(
-                        m -> WirePackets.getChannel().send(PacketDistributor.PLAYER.with(() -> sender),
-                                        new WireNetworkFullSyncPacket(shipId, m.serialiseToNbt(sender.level(), BlockPos.ZERO, true)))
+                ShipWireNetworkManager.get(ss).ifPresent(m ->
+                        PacketDistributor.sendToPlayer(sender, new WireNetworkFullSyncPacket(packet.shipId, m.serialiseToNbt(sender.level(), BlockPos.ZERO, true)))
                 );
             }
         });
-        return true;
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

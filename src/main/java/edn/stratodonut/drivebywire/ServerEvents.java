@@ -9,11 +9,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.LogicalSide;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import org.valkyrienskies.core.api.ships.LoadedServerShip;
 import org.valkyrienskies.core.api.ships.ServerShip;
 import org.valkyrienskies.core.api.ships.Ship;
@@ -22,19 +20,14 @@ import org.valkyrienskies.mod.common.VSGameUtilsKt;
 import java.util.Comparator;
 import java.util.EnumSet;
 
-@Mod.EventBusSubscriber(
-        modid = DriveByWireMod.MOD_ID
-)
 public class ServerEvents {
     public ServerEvents() {}
 
     @SubscribeEvent
-    public static void onServerWorldTick(TickEvent.LevelTickEvent event) {
-        if (event.phase == TickEvent.Phase.START)
+    public static void onServerWorldTick(LevelTickEvent.Post event) {
+        Level world = event.getLevel();
+        if (world.isClientSide)
             return;
-        if (event.side == LogicalSide.CLIENT)
-            return;
-        Level world = event.level;
         LinkedControllerWireServerHandler.tick(world);
         TweakedControllerWireServerHandler.tick(world);
     }

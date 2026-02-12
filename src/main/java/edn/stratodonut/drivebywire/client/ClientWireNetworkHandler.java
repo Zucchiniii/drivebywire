@@ -35,14 +35,13 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.event.level.LevelEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
 import org.valkyrienskies.core.api.ships.Ship;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
 
@@ -53,7 +52,6 @@ import java.util.Map;
 import java.util.Set;
 
 @OnlyIn(Dist.CLIENT)
-@Mod.EventBusSubscriber(value = Dist.CLIENT)
 public class ClientWireNetworkHandler {
     private static final ImmutableHashMap<Long, Map<String, Set<WireNetworkSink>>> EMPTY_MAP = new ImmutableHashMap<>();
     @Nonnull
@@ -114,16 +112,16 @@ public class ClientWireNetworkHandler {
                 // LINK NETWORKS
                 if (world.getBlockState(selectedSource).getBlock() instanceof WireNetworkBackupBlock &&
                         world.getBlockState(pos).getBlock() instanceof WireNetworkBackupBlock ) {
-                    WirePackets.getChannel().sendToServer(new WireLinkNetworksPacket(selectedSource, pos));
+                    WirePackets.sendToServer(new WireLinkNetworksPacket(selectedSource, pos));
                 } else {
                     Map<String, Set<WireNetworkSink>> currentSelection = currentNetwork.get(selectedSource.asLong());
                     WireNetworkSink node = new WireNetworkSink(pos, side);
                     if (currentSelection != null &&
                             (currentSelection.containsKey(currentChannel) && currentSelection.get(currentChannel).contains(node))) {
-                        WirePackets.getChannel().sendToServer(new WireRemoveConnectionPacket(
+                        WirePackets.sendToServer(new WireRemoveConnectionPacket(
                                 shipId, selectedSource, pos, side, currentChannel));
                     } else {
-                        WirePackets.getChannel().sendToServer(new WireAddConnectionPacket(
+                        WirePackets.sendToServer(new WireAddConnectionPacket(
                                 shipId, selectedSource, pos, side, currentChannel));
                     }
                 }
@@ -135,8 +133,7 @@ public class ClientWireNetworkHandler {
     }
 
     @SubscribeEvent
-    public static void onTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.START) return;
+    public static void onTick(ClientTickEvent.Post event) {
 
         Player player = Minecraft.getInstance().player;
         if (player == null)
@@ -178,7 +175,7 @@ public class ClientWireNetworkHandler {
 
     @SubscribeEvent
     public static void onInputEvent(InputEvent.MouseScrollingEvent event) {
-        double delta = event.getScrollDelta();
+        double delta = event.getScrollDeltaY();
         Player p = Minecraft.getInstance().player;
         if (p == null || selectedSource == null) return;
 
@@ -214,7 +211,7 @@ public class ClientWireNetworkHandler {
     }
 
     public static void syncManager(long shipId) {
-        WirePackets.getChannel().sendToServer(new WireNetworkRequestSyncPacket(shipId));
+        WirePackets.sendToServer(new WireNetworkRequestSyncPacket(shipId));
     }
 
     public static void loadFrom(Level level, long id, CompoundTag nbt) {

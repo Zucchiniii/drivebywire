@@ -12,7 +12,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
@@ -40,9 +40,8 @@ public class ControllerHubBlock extends Block implements MultiChannelWireSource 
     }
 
     @Override
-    public @NotNull InteractionResult use(@NotNull BlockState p_60503_, @NotNull Level level, @NotNull BlockPos blockPos,
-                                          @NotNull Player player, @NotNull InteractionHand p_60507_, @NotNull BlockHitResult p_60508_) {
-        ItemStack itemStack = player.getItemInHand(p_60507_);
+    protected @NotNull ItemInteractionResult useItemOn(@NotNull ItemStack itemStack, @NotNull BlockState p_60503_, @NotNull Level level, @NotNull BlockPos blockPos,
+                                                        @NotNull Player player, @NotNull InteractionHand p_60507_, @NotNull BlockHitResult p_60508_) {
         if (AllItems.LINKED_CONTROLLER.is(itemStack.getItem())) {
             HubItem.putHub(itemStack, blockPos);
             if (!level.isClientSide) {
@@ -50,10 +49,10 @@ public class ControllerHubBlock extends Block implements MultiChannelWireSource 
                 player.displayClientMessage(Component.literal("Controller connected!"), true);
             }
 
-            return InteractionResult.SUCCESS;
+            return ItemInteractionResult.SUCCESS;
         }
 
-        return super.use(p_60503_, level, blockPos, player, p_60507_, p_60508_);
+        return super.useItemOn(itemStack, p_60503_, level, blockPos, player, p_60507_, p_60508_);
     }
 
     @Override

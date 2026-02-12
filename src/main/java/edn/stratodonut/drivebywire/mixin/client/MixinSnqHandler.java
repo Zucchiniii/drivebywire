@@ -29,6 +29,6 @@ public abstract class MixinSnqHandler {
     private void mixinFirstPos(LangBuilder instance, Player player, Operation<Void> original) {
         Ship s = VSGameUtilsKt.getShipManagingPos(Minecraft.getInstance().player.level(), firstPos);
         if (s != null)
-            WirePackets.getChannel().sendToServer(new WireNetworkRequestSyncPacket(s.getId()));
+                        WirePackets.sendToServer(new WireNetworkRequestSyncPacket(s.getId()));
     }
 }

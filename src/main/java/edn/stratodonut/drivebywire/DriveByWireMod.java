@@ -5,17 +5,17 @@ import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.simibubi.create.foundation.item.ItemDescription;
 import com.simibubi.create.foundation.item.TooltipHelper;
 import edn.stratodonut.drivebywire.wire.ShipWireNetworkManager;
+import edn.stratodonut.drivebywire.client.ClientWireNetworkHandler;
 import net.createmod.catnip.lang.FontHelper;
 import net.createmod.ponder.api.registration.PonderPlugin;
 import net.createmod.ponder.foundation.PonderIndex;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 import org.valkyrienskies.mod.api.ValkyrienSkies;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
@@ -36,13 +36,9 @@ public class DriveByWireMod
                 new ItemDescription.Modifier(item, FontHelper.Palette.STANDARD_CREATE));
     }
 
-    public DriveByWireMod() { onCtor(); }
+    public DriveByWireMod(IEventBus modEventBus) { onCtor(modEventBus); }
 
-    public void onCtor() {
-        ModLoadingContext modLoadingContext = ModLoadingContext.get();
-        IEventBus modEventBus = FMLJavaModLoadingContext.get()
-                .getModEventBus();
-
+    public void onCtor(IEventBus modEventBus) {
         REGISTRATE.registerEventListeners(modEventBus);
         modEventBus.addListener(this::onCommonSetup);
 
@@ -57,10 +53,14 @@ public class DriveByWireMod
         WireBlocks.register();
         WireBlockEntities.register();
         WireItems.register();
-        WirePackets.registerPackets();
+        modEventBus.addListener(WirePackets::registerPayloads);
 
         WireSounds.register(modEventBus);
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> this::onCtorClient);
+        NeoForge.EVENT_BUS.register(ServerEvents.class);
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            NeoForge.EVENT_BUS.register(ClientWireNetworkHandler.class);
+            onCtorClient();
+        }
     }
 
     private void onCtorClient() {
@@ -80,6 +80,6 @@ public class DriveByWireMod
     }
 
     public static ResourceLocation getResource(String path) {
-        return new ResourceLocation(MOD_ID, path);
+        return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
     }
 }

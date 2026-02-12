@@ -2,6 +2,7 @@ package edn.stratodonut.drivebywire.blocks;
 
 import com.simibubi.create.content.contraptions.actors.AttachedActorBlock;
 import com.simibubi.create.foundation.block.IBE;
+import com.mojang.serialization.MapCodec;
 import edn.stratodonut.drivebywire.WireBlockEntities;
 import edn.stratodonut.drivebywire.wire.ShipWireNetworkManager;
 import net.minecraft.core.BlockPos;
@@ -19,8 +20,15 @@ import org.valkyrienskies.core.api.ships.Ship;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
 
 public class WireNetworkBackupBlock extends HorizontalDirectionalBlock implements IBE<WireNetworkBackupBlockEntity> {
+    public static final MapCodec<WireNetworkBackupBlock> CODEC = simpleCodec(WireNetworkBackupBlock::new);
+
     public WireNetworkBackupBlock(Properties p_49795_) {
         super(p_49795_);
+    }
+
+    @Override
+    protected MapCodec<? extends HorizontalDirectionalBlock> codec() {
+        return CODEC;
     }
 
 //    @Override

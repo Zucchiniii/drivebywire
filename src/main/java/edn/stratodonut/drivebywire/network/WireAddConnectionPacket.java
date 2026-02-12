@@ -1,30 +1,34 @@
 package edn.stratodonut.drivebywire.network;
 
-import com.simibubi.create.foundation.networking.SimplePacketBase;
+import edn.stratodonut.drivebywire.DriveByWireMod;
 import edn.stratodonut.drivebywire.WireSounds;
 import edn.stratodonut.drivebywire.wire.ShipWireNetworkManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.valkyrienskies.core.api.ships.LoadedServerShip;
-import org.valkyrienskies.core.api.ships.ServerShip;
 import org.valkyrienskies.core.api.ships.Ship;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
 
-public class WireAddConnectionPacket extends SimplePacketBase {
+public class WireAddConnectionPacket implements CustomPacketPayload {
+    public static final Type<WireAddConnectionPacket> TYPE = new Type<>(DriveByWireMod.getResource("wire_add_connection"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, WireAddConnectionPacket> STREAM_CODEC =
+            StreamCodec.ofMember(WireAddConnectionPacket::write, WireAddConnectionPacket::new);
+
     long shipId;
     long start;
     long end;
     int dir;
     String channel;
 
-    public WireAddConnectionPacket() {}
     public WireAddConnectionPacket(long shipId, BlockPos start, BlockPos end, Direction dir, String channel) {
         this.shipId = shipId;
         this.start = start.asLong();
@@ -32,7 +36,8 @@ public class WireAddConnectionPacket extends SimplePacketBase {
         this.dir = dir.get3DDataValue();
         this.channel = channel;
     }
-    public WireAddConnectionPacket(FriendlyByteBuf buf) {
+
+    public WireAddConnectionPacket(RegistryFriendlyByteBuf buf) {
         this.shipId = buf.readLong();
         this.start = buf.readLong();
         this.end = buf.readLong();
@@ -40,8 +45,7 @@ public class WireAddConnectionPacket extends SimplePacketBase {
         this.channel = buf.readUtf();
     }
 
-    @Override
-    public void write(FriendlyByteBuf buffer) {
+    public void write(RegistryFriendlyByteBuf buffer) {
         buffer.writeLong(shipId);
         buffer.writeLong(start);
         buffer.writeLong(end);
@@ -49,36 +53,24 @@ public class WireAddConnectionPacket extends SimplePacketBase {
         buffer.writeUtf(channel);
     }
 
-    @Override
-    public boolean handle(NetworkEvent.Context context) {
+    public static void handle(WireAddConnectionPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
-            if (sender == null) return;
-            Ship s = VSGameUtilsKt.getShipObjectWorld(sender.level()).getLoadedShips().getById(shipId);
-//        Ship s1 = VSGameUtilsKt.getShipManagingPos(sender.level(), BlockPos.of(start));
-//        Ship s2 = VSGameUtilsKt.getShipManagingPos(sender.level(), BlockPos.of(end));
-//        if (!Objects.equals(s, s1)) return true; // WTF???
-//        if (Objects.equals(s1, s2) && s1 instanceof ServerShip ss) {
+            if (!(context.player() instanceof ServerPlayer sender)) return;
+            Ship s = VSGameUtilsKt.getShipObjectWorld(sender.level()).getLoadedShips().getById(packet.shipId);
             if (s instanceof LoadedServerShip ss) {
                 ShipWireNetworkManager m = ShipWireNetworkManager.getOrCreate(ss);
-                ShipWireNetworkManager.CONNECTION_RESULT result = m.createConnection(sender.level(), BlockPos.of(start), BlockPos.of(end), Direction.from3DDataValue(dir), channel);
+                ShipWireNetworkManager.CONNECTION_RESULT result = m.createConnection(sender.level(), BlockPos.of(packet.start), BlockPos.of(packet.end), Direction.from3DDataValue(packet.dir), packet.channel);
                 if (result.isSuccess()) {
-                    sender.level().playSound(null, BlockPos.of(end), WireSounds.PLUG_IN.get(),
-                            SoundSource.BLOCKS, 1, 1);
+                    sender.level().playSound(null, BlockPos.of(packet.end), WireSounds.PLUG_IN.get(), SoundSource.BLOCKS, 1, 1);
                 } else {
                     sender.displayClientMessage(Component.literal(result.getDescription()).withStyle(Style.EMPTY.withColor(ChatFormatting.RED)), true);
                 }
-                // TODO: Connection Error message?
             }
-//        } else if (s1 instanceof ServerShip ss1 && s2 instanceof ServerShip ss2) {
-//            WireNetworkManager m1 = WireNetworkManager.getOrCreate(ss1);
-//            WireNetworkManager m2 = WireNetworkManager.getOrCreate(ss2);
-//
-//            if (m1.createConnection(sender.level(), m2, BlockPos.of(start), BlockPos.of(end), Direction.from3DDataValue(dir), channel).isSuccess()) {
-//                m2.createConnection(sender.level(), m1, BlockPos.of(start), BlockPos.of(end), Direction.from3DDataValue(dir), channel);
-//            }
-//        }
         });
-        return true;
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }
